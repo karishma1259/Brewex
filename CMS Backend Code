@@ -1,0 +1,47 @@
+// server/index.js
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const sqlite3 = require('sqlite3').verbose();
+
+const app = express();
+const PORT = 4000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Initialize SQLite DB
+const db = new sqlite3.Database('./heading.db', (err) => {
+  if (err) return console.error(err.message);
+  console.log('Connected to the SQLite database.');
+});
+
+// Create table if it doesn't exist
+const createTable = `CREATE TABLE IF NOT EXISTS heading (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL
+)`;
+
+db.run(createTable);
+
+// GET heading
+app.get('/api/heading', (req, res) => {
+  db.get('SELECT text FROM heading ORDER BY id DESC LIMIT 1', [], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ heading: row ? row.text : '' });
+  });
+});
+// POST heading
+app.post('/api/heading', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'Text is required' });
+
+  db.run('INSERT INTO heading(text) VALUES(?)', [text], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, id: this.lastID });
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(Server running on http://localhost:${PORT});
+});
